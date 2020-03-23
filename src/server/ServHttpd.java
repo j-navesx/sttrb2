@@ -19,6 +19,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.ServerSocket;
@@ -32,11 +33,11 @@ public class ServHttpd extends javax.swing.JFrame {
     /**
      * Server name - EXERCISE: Replace the 00000 by your numbers
      */
-    public final static String server_name = "HTTP Serv 2019/2020 by 00000/00000/00000";
+    public final static String server_name = "HTTP Serv 2019/2020 by 55901/55091/00000";
     /**
      * Default file name when browser sends "/"
      */
-    public final static String HOMEFILENAME = "index.htm";
+    public final static String HOMEFILENAME = "index.html";
     /**
      * Accepts up to 10 pending TCP connections
      */
@@ -146,6 +147,11 @@ public class ServHttpd extends javax.swing.JFrame {
         jPanel1.add(jLabel4);
 
         jTextLocalPort.setText("20001");
+        jTextLocalPort.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                jTextLocalPortActionPerformed(evt);
+            }
+        });
         jPanel1.add(jTextLocalPort);
 
         getContentPane().add(jPanel1);
@@ -211,7 +217,7 @@ public class ServHttpd extends javax.swing.JFrame {
 
         getContentPane().add(jPanel4);
 
-        jPanel2.setToolTipText("configuração");
+        jPanel2.setToolTipText("configura��o");
         jPanel2.setMaximumSize(new java.awt.Dimension(460, 35));
         jPanel2.setMinimumSize(new java.awt.Dimension(420, 35));
         jPanel2.setName("configuracao"); // NOI18N
@@ -219,7 +225,6 @@ public class ServHttpd extends javax.swing.JFrame {
 
         jButtonClear.setText("Clear");
         jButtonClear.setMaximumSize(new java.awt.Dimension(75, 29));
-        jButtonClear.setOpaque(true);
         jButtonClear.setPreferredSize(new java.awt.Dimension(75, 29));
         jButtonClear.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -347,8 +352,9 @@ public class ServHttpd extends javax.swing.JFrame {
      */
     private void set_timer_function(int period /*ms*/) {
         java.awt.event.ActionListener act;
-
+        
         act = new java.awt.event.ActionListener() {
+            
             @Override
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 /*
@@ -357,12 +363,16 @@ public class ServHttpd extends javax.swing.JFrame {
                         files.stringPropertyNames()
                     You can use the method send_Registration to do it.
                 */
+               
+                for(String filename : files.stringPropertyNames()){
+                    send_Registration(filename);
+                }
             }
         };
         // Create the timer's object
-        // timer = new javax.swing.Timer(period, act);
+        timer = new javax.swing.Timer(period, act);
     }
-
+  
     /**
      * Handles the button that starts and stops the Server 
      */
@@ -420,18 +430,26 @@ public class ServHttpd extends javax.swing.JFrame {
             main_thread = new Daemon_tcp(this, ssock);
             main_thread.start();
             
+            set_timer_function(10000 /* 10s */);
+            timer.start();
+            
             setEditable_jText(false);
             Log("Web server active\n");
         } else {
-            Log("Server did not stop timer and Datagram socket\n");
+            //Log("Server did not stop timer and Datagram socket\n");
             /*
                 EXERCISE: Place here the code to stop the timer
             */
+            timer.stop();
             // Stop the server socket thread and the sockets
             try {
                 /*
                     EXERCISE: Place here the code to close the Datagram socket
                 */
+                if(ds != null){
+                    ds.close();
+                    ds = null;
+                }
                 if (main_thread != null) {
                     main_thread.stop_thread();
                     main_thread = null;
@@ -526,6 +544,10 @@ public class ServHttpd extends javax.swing.JFrame {
         }
     }//GEN-LAST:event_jButtonLoadActionPerformed
 
+    private void jTextLocalPortActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jTextLocalPortActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_jTextLocalPortActionPerformed
+
     /**
      * Controls editability of jTexts
      *
@@ -619,20 +641,67 @@ public class ServHttpd extends javax.swing.JFrame {
             // Get local IP
             String ip_srv= jTextLocalIP.getText();
 
-//            System.out.println("Registering to " + ip.getHostAddress() + ":" + port);
             Log("Registering to " + ip.getHostAddress() + ":" + port + "\n");
             
             /* EXERCISE XX:
                 Put here the code to prepare the REGIST message and to send it 
                     to the Proxy server!
             */
-            Log("Message REGIST not sent - complete the missing code\n");
+            short type = 3;
+            short len_name =  (short) name.length();
+            
+            short num1 = (short) 5901;
+            short num2 = (short) 5091;
+            short num3 = 0;
+            short len_ip = (short) ip_srv.length();
+            int servport = Integer.parseInt(jTextLocalPort.getText());
+            byte[] nameArray = name.getBytes();         //Convert String name to byte array
+            byte[] ipArray = ip_srv.getBytes();         //Convert String ip_srv to byte array
+            
+            dos.writeShort(type);
+            
+            dos.writeShort(len_name);
+            dos.write(nameArray, 0 ,(int) len_name);
+            dos.writeShort(len_ip);
+            dos.write(ipArray, 0 ,(int) len_ip); 
+            dos.writeInt(servport);
+            
+            dos.writeShort(num1);
+            dos.writeShort(num2);
+            dos.writeShort(num3);
+            
+            byte[] buffer = os.toByteArray();       // Convert to byte array   
+            DatagramPacket Regist = new DatagramPacket(buffer, buffer.length); // Create packet
+           
+            
+            send_one_packet(Regist,ip,port);
+            
+            
             
             return true;
         } catch (Exception ex) {
             Log("Error sending Registration packet:" + ex + "\n");
             return false;
         }
+    }
+    
+    private void send_one_packet(DatagramPacket dp, InetAddress netip, int port) {
+        try {
+            
+            dp.setAddress(netip);   // Set destination ip
+            dp.setPort(port);       // Set destination port
+            ds.send(dp);          // Send packet
+            
+            Log("Message REGIST sent\n");
+            
+        } catch (IOException e) {
+            // Communications exception
+            Log("Error sending packet: " + e + "\n");
+        } catch (Exception e) {
+            // Other exception (e.g. null pointer, etc.)
+            Log("Error sending packet: " + e + "\n");
+        }
+        
     }
 
     /**
@@ -642,7 +711,7 @@ public class ServHttpd extends javax.swing.JFrame {
         new ServHttpd().setVisible(true);
     }
 
-
+    private javax.swing.Timer timer;
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton jButtonAdd;
     private javax.swing.JButton jButtonClear;
@@ -673,4 +742,5 @@ public class ServHttpd extends javax.swing.JFrame {
     private javax.swing.JTextField jTextRaizHtml;
     private javax.swing.JToggleButton jToggleButton1;
     // End of variables declaration//GEN-END:variables
+
 }

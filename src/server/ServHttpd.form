@@ -93,6 +93,9 @@
           <Properties>
             <Property name="text" type="java.lang.String" value="20001"/>
           </Properties>
+          <Events>
+            <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="jTextLocalPortActionPerformed"/>
+          </Events>
         </Component>
       </SubComponents>
     </Container>
@@ -208,7 +211,6 @@
             <Property name="maximumSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
               <Dimension value="[75, 29]"/>
             </Property>
-            <Property name="opaque" type="boolean" value="true"/>
             <Property name="preferredSize" type="java.awt.Dimension" editor="org.netbeans.beaninfo.editors.DimensionEditor">
               <Dimension value="[75, 29]"/>
             </Property>
